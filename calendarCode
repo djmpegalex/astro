@@ -1,0 +1,92 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import calendar
+from datetime import datetime
+
+# Функция для создания таблицы календаря
+def create_monthly_calendar(year, month, highlighted_days=None):
+    # Получаем первый и последний день месяца
+    first_day = calendar.monthrange(year, month)[0]  # 0 - понедельник, 6 - воскресенье
+    num_days = calendar.monthrange(year, month)[1]  # Количество дней в месяце
+
+    # Создаем пустую таблицу (6 недель по 7 дней)
+    calendar_grid = np.full((6, 7), '', dtype=object)
+
+    # Заполняем таблицу
+    day_counter = 1
+    for week in range(6):
+        for day in range(7):
+            # Заполняем только дни месяца
+            if week == 0 and day < first_day:
+                calendar_grid[week, day] = ''
+            elif day_counter <= num_days:
+                calendar_grid[week, day] = str(day_counter)
+                day_counter += 1
+
+    return calendar_grid
+
+# Функция для чтения данных из файла
+def read_events_from_file(file_path):
+    events = {}
+    with open(file_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            parts = line.strip().split(' -----> ')
+            if len(parts) == 2:
+                date_str = parts[0].split()[0]  # Извлекаем дату
+                event = parts[1].strip()  # Извлекаем событие
+                date = datetime.strptime(date_str, '%d.%m.%Y')
+                day = date.day
+                month = date.month
+                
+                if month not in events:
+                    events[month] = []
+                events[month].append((day, event))
+    return events
+
+# Настройка графика
+fig, axs = plt.subplots(3, 4, figsize=(15, 10))
+fig.suptitle('Дубаи Календарь на 2025 год', fontsize=20)
+
+# Чтение событий из файла
+highlighted_events = read_events_from_file('events.txt')
+
+# Создание таблиц для каждого месяца
+for month in range(1, 13):
+    calendar_grid = create_monthly_calendar(2025, month)
+    
+    ax = axs[(month-1) // 4, (month-1) % 4]
+    ax.axis('off')
+
+    # Создаем таблицу
+    table = ax.table(cellText=calendar_grid, loc='center', cellLoc='center', colLabels=['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'])
+
+    # Настройка внешнего вида таблицы
+    table.auto_set_font_size(False)
+    table.set_fontsize(14)
+    table.scale(1, 1.5)  # Увеличиваем высоту ячеек
+
+    # Окрашивание ячеек
+    for (i, j), cell in table.get_celld().items():
+        if i == 0:  # Заголовок
+            cell.set_facecolor('#d3d3d3')
+        else:
+            day = calendar_grid[i-1, j]
+            if day != '':
+                day_num = int(day)
+                # Проверяем наличие события для текущего дня
+                if month in highlighted_events:
+                    for event_day, event in highlighted_events[month]:
+                        if event_day == day_num:
+
+                            if event[0] == '+':
+                                cell.set_facecolor('#90ee90')  # Светло-зеленый цвет для выделенных дат
+                            if event[0] == '-':
+                                cell.set_facecolor('#ff6347')
+            else:
+                cell.set_facecolor('#f0f0f0')  # Серый цвет для пустых ячеек
+
+    ax.set_title(f'{calendar.month_name[month]} 2025', fontsize=14)
+
+# Показ графика
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+plt.show()
